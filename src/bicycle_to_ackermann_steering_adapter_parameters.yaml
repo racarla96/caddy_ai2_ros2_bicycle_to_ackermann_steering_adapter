@@ -1,0 +1,58 @@
+bicycle_to_ackermann_steering_adapter:
+
+  wheelbase:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Distance between front and rear wheels. For details see: https://en.wikipedia.org/wiki/Wheelbase",
+      read_only: true,
+      validation: {
+        gt<>: [0.0]
+      }
+    }
+
+  track_width:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Steering wheel track length.",
+      read_only: true,
+      validation: {
+        gt<>: [0.0]
+      }
+    }
+
+  max_steer_angle:
+    {
+      type: double,
+      default_value: 0.0,
+      description: "Maximum steering angle.",
+      read_only: true,
+      validation: {
+        gt<>: [0.0]
+      }
+    }
+
+  input_steering_name: 
+    {
+      type: string,
+      description: "Name of the input steer interface",
+      validation: {
+        not_empty<>: []
+      },
+      read_only: true
+    }
+
+  output_steering_names: 
+    {
+      type: string_array,
+      description: "Names of steering joints. For kinematic configurations with two steering joints, the expected order is: right joint, left joint. The orientation of the steering axes is expected as such: When positive steering position value is commanded, then the robot should turn in positive direction of the z-axis of the vehicle (see REP-103).",
+      default_value: [],
+      read_only: true,
+      validation: {
+        size_lt<>: [3],
+        size_gt<>: [1],
+        unique<>: null,
+        not_empty<>: null,
+      }
+    }
