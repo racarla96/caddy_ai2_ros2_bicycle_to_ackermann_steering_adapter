@@ -87,11 +87,6 @@ install(
 )
 
 install(
-  DIRECTORY config launch
-  DESTINATION share/${PROJECT_NAME}/
-)
-
-install(
   TARGETS ${PROJECT_NAME}
   bicycle_to_ackermann_steering_adapter_parameters
   EXPORT export_${PROJECT_NAME}

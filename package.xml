@@ -3,11 +3,22 @@
 <package format="3">
   <name>bicycle_to_ackermann_steering_adapter</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>ros2_control chainable controller that converts a bicycle-model center steering angle into individual Ackermann left/right steering angles.</description>
   <maintainer email="racarla96@gmail.com">racarla96</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ros2_control_cmake</buildtool_depend>
+
+  <build_depend>backward_ros</build_depend>
+  <build_depend>generate_parameter_library</build_depend>
+
+  <depend>controller_interface</depend>
+  <depend>filters</depend>
+  <depend>hardware_interface</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
