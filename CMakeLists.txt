@@ -9,7 +9,6 @@ export_windows_symbols()
 set(THIS_PACKAGE_INCLUDE_DEPENDS
   controller_interface
   generate_parameter_library
-  filters
   hardware_interface
   pluginlib
   rclcpp
