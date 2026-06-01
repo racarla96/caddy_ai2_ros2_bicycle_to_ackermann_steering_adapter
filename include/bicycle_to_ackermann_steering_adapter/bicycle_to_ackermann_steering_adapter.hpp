@@ -11,7 +11,7 @@
 #include "controller_interface/chainable_controller_interface.hpp"
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 
-#include "bicycle_to_ackermann_steering_adapter/bicycle_to_ackermann_steering_adapter_parameters.hpp"
+#include "caddy_ai2_ros2_bicycle_to_ackermann_steering_adapter/bicycle_to_ackermann_steering_adapter_parameters.hpp"
 
 namespace bicycle_to_ackermann_steering_adapter
 {

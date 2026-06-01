@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(bicycle_to_ackermann_steering_adapter)
+project(caddy_ai2_ros2_bicycle_to_ackermann_steering_adapter)
 
 find_package(ros2_control_cmake REQUIRED)
 set_compiler_options()

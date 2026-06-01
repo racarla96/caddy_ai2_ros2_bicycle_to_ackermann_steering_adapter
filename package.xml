@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>bicycle_to_ackermann_steering_adapter</name>
-  <version>0.0.0</version>
+  <name>caddy_ai2_ros2_bicycle_to_ackermann_steering_adapter</name>
+  <version>1.0.0</version>
   <description>ros2_control chainable controller that converts a bicycle-model center steering angle into individual Ackermann left/right steering angles.</description>
   <maintainer email="racarla96@gmail.com">racarla96</maintainer>
   <license>Apache-2.0</license>

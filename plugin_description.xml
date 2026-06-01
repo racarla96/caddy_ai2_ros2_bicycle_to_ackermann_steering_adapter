@@ -1,4 +1,4 @@
-<library path="bicycle_to_ackermann_steering_adapter">
+<library path="caddy_ai2_ros2_bicycle_to_ackermann_steering_adapter">
   <class
     name="bicycle_to_ackermann_steering_adapter/BicycleToAckermannSteeringAdapter"
     type="bicycle_to_ackermann_steering_adapter::BicycleToAckermannSteeringAdapter"
