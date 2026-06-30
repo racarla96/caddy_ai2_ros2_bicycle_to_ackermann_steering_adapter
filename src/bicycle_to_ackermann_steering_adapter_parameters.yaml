@@ -43,7 +43,15 @@ bicycle_to_ackermann_steering_adapter:
       read_only: true
     }
 
-  output_steering_names: 
+  by_reference_or_by_state:
+    {
+      type: bool,
+      default_value: false,
+      description: "Operation mode: false = by_reference (upstream chained reference as input), true = by_state (hardware sensor as input).",
+      read_only: true
+    }
+
+  output_steering_names:
     {
       type: string_array,
       description: "Names of steering joints. For kinematic configurations with two steering joints, the expected order is: right joint, left joint. The orientation of the steering axes is expected as such: When positive steering position value is commanded, then the robot should turn in positive direction of the z-axis of the vehicle (see REP-103).",

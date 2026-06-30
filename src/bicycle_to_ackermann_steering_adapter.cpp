@@ -34,6 +34,7 @@ controller_interface::CallbackReturn BicycleToAckermannSteeringAdapter::on_confi
     wheelbase_ = bicycle_to_ackermann_steering_adapter_params_.wheelbase;
     track_width_ = bicycle_to_ackermann_steering_adapter_params_.track_width;
     max_steer_angle_ = bicycle_to_ackermann_steering_adapter_params_.max_steer_angle;
+    by_reference_or_by_state_ = bicycle_to_ackermann_steering_adapter_params_.by_reference_or_by_state;
   }
   catch (const std::exception & e)
   {
@@ -51,7 +52,7 @@ controller_interface::InterfaceConfiguration BicycleToAckermannSteeringAdapter::
   for (size_t i = 0; i < nr_output_steer_itfs_; i++)
   {
     command_interfaces_config.names.push_back(
-      bicycle_to_ackermann_steering_adapter_params_.output_steering_names[i] 
+      bicycle_to_ackermann_steering_adapter_params_.output_steering_names[i]
       + "/" + hardware_interface::HW_IF_POSITION);
   }
   return command_interfaces_config;
@@ -61,13 +62,24 @@ controller_interface::InterfaceConfiguration BicycleToAckermannSteeringAdapter::
 {
   controller_interface::InterfaceConfiguration state_interfaces_config;
   state_interfaces_config.type = controller_interface::interface_configuration_type::INDIVIDUAL;
-  state_interfaces_config.names.reserve(nr_output_steer_itfs_);
-  for (size_t i = 0; i < nr_output_steer_itfs_; i++)
+
+  if (by_reference_or_by_state_)
   {
     state_interfaces_config.names.push_back(
-      bicycle_to_ackermann_steering_adapter_params_.output_steering_names[i] 
+      bicycle_to_ackermann_steering_adapter_params_.input_steering_name
       + "/" + hardware_interface::HW_IF_POSITION);
   }
+  else
+  {
+    state_interfaces_config.names.reserve(nr_output_steer_itfs_);
+    for (size_t i = 0; i < nr_output_steer_itfs_; i++)
+    {
+      state_interfaces_config.names.push_back(
+        bicycle_to_ackermann_steering_adapter_params_.output_steering_names[i]
+        + "/" + hardware_interface::HW_IF_POSITION);
+    }
+  }
+
   return state_interfaces_config;
 }
 
@@ -81,10 +93,10 @@ BicycleToAckermannSteeringAdapter::on_export_state_interfaces()
   for (size_t i = 0; i < nr_input_steer_itfs_; ++i)
   {
     state_interfaces.emplace_back(
-     get_name() 
+     get_name()
       + "/" + bicycle_to_ackermann_steering_adapter_params_.input_steering_name,
       hardware_interface::HW_IF_POSITION,
-      &state_interfaces_values_[i]             
+      &state_interfaces_values_[i]
     );
   }
 
@@ -105,7 +117,7 @@ BicycleToAckermannSteeringAdapter::on_export_reference_interfaces()
       get_name()
       + "/" + bicycle_to_ackermann_steering_adapter_params_.input_steering_name,
       hardware_interface::HW_IF_POSITION,
-      &reference_interfaces_[i]                  
+      &reference_interfaces_[i]
     );
   }
 
@@ -143,92 +155,96 @@ controller_interface::return_type BicycleToAckermannSteeringAdapter::update_and_
 
   auto logger = get_node()->get_logger();
 
-  // Get current values of the steering joints
-  auto right_steering_angle_op = state_interfaces_[0].get_optional();
-  auto left_steering_angle_op = state_interfaces_[1].get_optional();
-
-  if (!right_steering_angle_op.has_value())
-  {
-    RCLCPP_ERROR(
-      logger, "Unable to retrieve position feedback data for right steering angle");
-    return controller_interface::return_type::ERROR;
-  }
-  if (!left_steering_angle_op.has_value())
-  {
-    RCLCPP_ERROR(
-      logger, "Unable to retrieve position feedback data for left steering angle");
-    return controller_interface::return_type::ERROR;
-  }
-
-  right_steering_angle_ = right_steering_angle_op.value();
-  left_steering_angle_ = left_steering_angle_op.value();
-
-  //RCLCPP_DEBUG(logger, "--------------------------------");
-  //RCLCPP_DEBUG(logger, "Right steering angle: %f", right_steering_angle_);
-  //RCLCPP_DEBUG(logger, "Left steering angle: %f", left_steering_angle_);
-
-  // Convert to Ackermann steering geometry to center steering angle
-  right_steering_angle_ = std::atan(1.0 / ( (std::cos(right_steering_angle_) / std::sin(right_steering_angle_)) - (track_width_/(2*wheelbase_)) ) );
-  left_steering_angle_  = std::atan(1.0 / ( (std::cos(left_steering_angle_)  / std::sin(left_steering_angle_))  + (track_width_/(2*wheelbase_)) ) );
-  center_steering_angle_ = (right_steering_angle_ + left_steering_angle_) / 2;
-  state_interfaces_values_[0] = center_steering_angle_;
-
-  //RCLCPP_DEBUG(logger, "Right Center steering angle: %f", right_steering_angle_);
-  //RCLCPP_DEBUG(logger, "Left Center steering angle: %f", left_steering_angle_);
-  //RCLCPP_DEBUG(logger, "Mean Center steering angle: %f", center_steering_angle_);
-
   right_steering_angle_ = 0.0;
   left_steering_angle_ = 0.0;
 
-  // Convert to Ackermann steering geometry to individual steering angles
-  if (!std::isnan(reference_interfaces_[0])){
+  if (by_reference_or_by_state_)
+  {
+    // by_state: input = hardware sensor (center steering angle) → apply Ackermann kinematics → output individual angles
+    auto center_steering_angle_op = state_interfaces_[0].get_optional();
+    if (!center_steering_angle_op.has_value())
+    {
+      RCLCPP_ERROR(logger, "Unable to retrieve position data for center steering angle sensor");
+      return controller_interface::return_type::ERROR;
+    }
 
-    center_steering_angle_ = reference_interfaces_[0];
-
-    //RCLCPP_DEBUG(logger, "Center steering angle: %f", center_steering_angle_);
+    center_steering_angle_ = center_steering_angle_op.value();
+    state_interfaces_values_[0] = center_steering_angle_;
 
     center_steering_angle_ = std::clamp(center_steering_angle_, -max_steer_angle_, max_steer_angle_);
     center_steering_angle_abs_ = std::abs(center_steering_angle_);
 
-    //RCLCPP_DEBUG(logger, "Center steering angle: %f", center_steering_angle_);
-
-    // Handle near-straight case to avoid division by zero
     if (center_steering_angle_abs_ > 1e-6) {
+      cot_center_steering_angle_ = std::cos(center_steering_angle_abs_) / std::sin(center_steering_angle_abs_);
+      outer_steering_angle_ = std::atan2(1.0, (cot_center_steering_angle_ + (track_width_ / (2 * wheelbase_))));
+      inner_steering_angle_ = std::atan2(1.0, (cot_center_steering_angle_ - (track_width_ / (2 * wheelbase_))));
 
-        cot_center_steering_angle_ = std::cos(center_steering_angle_abs_) / std::sin(center_steering_angle_abs_);
-        outer_steering_angle_ = std::atan2(1.0, ( cot_center_steering_angle_ + (track_width_/(2*wheelbase_)) ) );
-        inner_steering_angle_ = std::atan2(1.0, ( cot_center_steering_angle_ - (track_width_/(2*wheelbase_)) ) );
-
-        //RCLCPP_DEBUG(logger, "Inner steering angle: %f", inner_steering_angle_);
-        //RCLCPP_DEBUG(logger, "Outer steering angle: %f", outer_steering_angle_);
-
-        // Assign based on turn direction (REP-103: positive δ → turn left)
-        if (center_steering_angle_ > 0) {
-            // Turning left: left wheel is inner, right wheel is outer
-            left_steering_angle_ = inner_steering_angle_;
-            right_steering_angle_ = outer_steering_angle_;
-        } else {
-            // Turning right: right wheel is inner, left wheel is outer
-            right_steering_angle_ = -inner_steering_angle_;
-            left_steering_angle_ = -outer_steering_angle_;
-        }
+      if (center_steering_angle_ > 0) {
+        left_steering_angle_ = inner_steering_angle_;
+        right_steering_angle_ = outer_steering_angle_;
+      } else {
+        right_steering_angle_ = -inner_steering_angle_;
+        left_steering_angle_ = -outer_steering_angle_;
+      }
     }
   }
+  else
+  {
+    // by_reference: read individual wheel states → compute center angle feedback → apply kinematics from reference
+    auto right_steering_angle_op = state_interfaces_[0].get_optional();
+    auto left_steering_angle_op = state_interfaces_[1].get_optional();
 
-  //RCLCPP_DEBUG(logger, "Right steering angle: %f", right_steering_angle_);
-  //RCLCPP_DEBUG(logger, "Left steering angle: %f", left_steering_angle_);
+    if (!right_steering_angle_op.has_value())
+    {
+      RCLCPP_ERROR(logger, "Unable to retrieve position feedback data for right steering angle");
+      return controller_interface::return_type::ERROR;
+    }
+    if (!left_steering_angle_op.has_value())
+    {
+      RCLCPP_ERROR(logger, "Unable to retrieve position feedback data for left steering angle");
+      return controller_interface::return_type::ERROR;
+    }
 
-  // Set command interfaces (order: right joint, left joint)
+    right_steering_angle_ = right_steering_angle_op.value();
+    left_steering_angle_ = left_steering_angle_op.value();
+
+    right_steering_angle_ = std::atan(1.0 / ((std::cos(right_steering_angle_) / std::sin(right_steering_angle_)) - (track_width_ / (2 * wheelbase_))));
+    left_steering_angle_  = std::atan(1.0 / ((std::cos(left_steering_angle_)  / std::sin(left_steering_angle_))  + (track_width_ / (2 * wheelbase_))));
+    center_steering_angle_ = (right_steering_angle_ + left_steering_angle_) / 2;
+    state_interfaces_values_[0] = center_steering_angle_;
+
+    right_steering_angle_ = 0.0;
+    left_steering_angle_ = 0.0;
+
+    if (!std::isnan(reference_interfaces_[0])) {
+      center_steering_angle_ = reference_interfaces_[0];
+      center_steering_angle_ = std::clamp(center_steering_angle_, -max_steer_angle_, max_steer_angle_);
+      center_steering_angle_abs_ = std::abs(center_steering_angle_);
+
+      if (center_steering_angle_abs_ > 1e-6) {
+        cot_center_steering_angle_ = std::cos(center_steering_angle_abs_) / std::sin(center_steering_angle_abs_);
+        outer_steering_angle_ = std::atan2(1.0, (cot_center_steering_angle_ + (track_width_ / (2 * wheelbase_))));
+        inner_steering_angle_ = std::atan2(1.0, (cot_center_steering_angle_ - (track_width_ / (2 * wheelbase_))));
+
+        if (center_steering_angle_ > 0) {
+          left_steering_angle_ = inner_steering_angle_;
+          right_steering_angle_ = outer_steering_angle_;
+        } else {
+          right_steering_angle_ = -inner_steering_angle_;
+          left_steering_angle_ = -outer_steering_angle_;
+        }
+      }
+    }
+
+    reference_interfaces_[0] = std::numeric_limits<double>::quiet_NaN();
+  }
+
   if (!command_interfaces_[0].set_value(right_steering_angle_)) {
-    RCLCPP_WARN(get_node()->get_logger(), "Failed to set right steering");
+    RCLCPP_WARN(logger, "Failed to set right steering");
   }
-
   if (!command_interfaces_[1].set_value(left_steering_angle_)) {
-    RCLCPP_WARN(get_node()->get_logger(), "Failed to set left steering");
+    RCLCPP_WARN(logger, "Failed to set left steering");
   }
-
-  // Reset reference
-  reference_interfaces_[0] = std::numeric_limits<double>::quiet_NaN();
 
   return controller_interface::return_type::OK;
 }

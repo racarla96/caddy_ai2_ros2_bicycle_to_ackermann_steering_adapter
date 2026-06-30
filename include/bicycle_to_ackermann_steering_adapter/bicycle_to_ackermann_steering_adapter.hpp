@@ -55,6 +55,9 @@ protected:
   std::shared_ptr<bicycle_to_ackermann_steering_adapter::ParamListener> bicycle_to_ackermann_steering_adapter_param_listener_;
   bicycle_to_ackermann_steering_adapter::Params bicycle_to_ackermann_steering_adapter_params_;
 
+  // Operation mode
+  bool by_reference_or_by_state_ = false;
+
   // Bicycle model parameters
   double wheelbase_;
   double track_width_;
